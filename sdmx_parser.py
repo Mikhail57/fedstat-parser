@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import xml.etree.ElementTree
 from typing import List, Optional
 from xml.etree.ElementTree import ElementTree
 
@@ -11,7 +12,9 @@ from variables import XML_NS
 class SdmxParser:
 
     def __init__(self, file_content: str):
-        self._file_content = file_content
+        self._xml = xml.etree.ElementTree.fromstring(file_content)
+        self.codes = self.get_codes(self._xml)
+        self.data = self.get_data(self._xml, self.codes)
 
     @staticmethod
     def _get_text(
@@ -84,16 +87,16 @@ class SdmxParser:
             return default
         return sub.strip() if strip else sub
 
-    # Parses and collects the CodeLists section of a dataset XML.
-    # @param ds_rootnode `ElementTree node` the parent node containing 'CodeLists'
-    # @returns `dict` CodeLists section converted into a dictionary in the format:<br>
-    # ```
-    # {
-    #  'code-name': {'name': '<full name>', 'values': [('<id>', '<description>'), ...]},
-    #  'code-name': {...}
-    # }
-    # ```
     def get_codes(self, ds_root_node: ElementTree):
+        """
+        Parses and collects the CodeLists section of a dataset XML.
+        :param ds_root_node: the parent node containing 'CodeLists'
+        :return: CodeLists section converted into a dictionary in the format:
+        {
+         'code-name': {'name': '<full name>', 'values': {'<id>': '<description>'), ...},
+         'code-name': {...}
+        }
+        """
         codelists = ds_root_node.find('message:CodeLists', XML_NS)
         d_codes = {}
 
@@ -105,16 +108,13 @@ class SdmxParser:
                                              for code in item.iterfind('structure:Code', XML_NS)])}
         return d_codes
 
-    # Parses and collects the DataSet section of a dataset XML.
-    # @param ds_rootnode `ElementTree node` the parent node containing 'DataSet'
-    # @param codes `dict` CodeLists section as a dictionary -- see \_get_codes()
-    # @param max_row `int` limit of data points to collect from the XML
-    # (`-1` = no limit)
-    # @returns `list` DataSet section as a list of data values in the format:<br>
-    # ```
-    # [('classifier', 'class', 'unit', 'period of observation', int('observation year'), float('observation value')), ...]
-    # ```
-    def get_data(self, ds_root_node: ElementTree, codes: dict):
+    def get_data(self, ds_root_node: ElementTree, codes: dict) -> List[dict]:
+        """
+        Parses and collects the DataSet section of a dataset XML.
+        :param ds_root_node: the parent node containing 'DataSet'
+        :param codes: CodeLists section as a dictionary -- see _get_codes()
+        :return: DataSet section as a list of data values in the format: [{'value': float, 'period': 'month', …}
+        """
         dataset = ds_root_node.find('message:DataSet', XML_NS)
         if not dataset:
             return []

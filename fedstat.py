@@ -7,6 +7,7 @@ from requests import Session
 from requests.adapters import HTTPAdapter, Retry
 
 from filter_field import FilterField, FilterOrientation, FilterValue
+from sdmx_parser import SdmxParser
 from variables import FEDSTAT_URL_BASE
 
 
@@ -51,7 +52,7 @@ class FedStatApi:
             result.append(result_filter)
         return result
 
-    def get_data(self, indicator_id: int, filter_fields: List[FilterField]):
+    def get_data(self, indicator_id: int, filter_fields: List[FilterField]) -> SdmxParser:
         indicator_post_url = self.__base_url + '/indicator/data.do?format=sdmx'
         indicator_title = list(filter(lambda f: f.id == 0, filter_fields))[0].values[0].title
 
@@ -74,7 +75,7 @@ class FedStatApi:
                     post_filters.append(('groupObjectIds', filter_field.id))
         sdmx_response = self.__http.post(indicator_post_url, data=post_filters)
         sdmx_response.encoding = 'utf-8'  # fedstat returns wrong encoding
-        # sdmx =
+        return SdmxParser(sdmx_response.text)
 
 
     @staticmethod
