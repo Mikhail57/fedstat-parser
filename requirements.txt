@@ -2,3 +2,5 @@ beautifulsoup4==4.11.1
 chompjs==1.1.8
 pandas==1.5.1
 requests==2.28.1
+enaml~=0.15.2
+atom~=0.8.2

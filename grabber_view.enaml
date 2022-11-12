@@ -1,0 +1,88 @@
+#------------------------------------------------------------------------------
+# Copyright (c) 2013, Nucleic Development Team.
+#
+# Distributed under the terms of the Modified BSD License.
+#
+# The full license is in the file LICENSE, distributed with this software.
+#------------------------------------------------------------------------------
+""" An example of using Looper to generate widgets from an iterable.
+
+<< autodoc-me >>
+"""
+from __future__ import print_function
+import os
+from pathlib import Path
+
+from enaml.image import Image
+from enaml.core.api import Looper, Conditional
+from enaml.layout.api import vbox, hbox, align
+from enaml.widgets.api import (
+    Window, Container, Label, Field, PushButton, ScrollArea, Slider, Html, ComboBox, ImageView, CheckBox, GroupBox
+)
+
+
+def image_path(name):
+    dirname = os.path.dirname(__file__)
+    return os.path.join(dirname, 'images', name)
+
+
+LOADER_IMAGE = Image(data=Path(image_path('loader.gif')).read_bytes())
+
+
+enamldef Loader(Container):
+    Label:
+        text = 'Загрузка…'
+
+
+enamldef Filter(GroupBox): self_filter:
+    attr item
+    attr is_checkbox_enabled = len(item.values) > 1
+
+    share_layout = True
+    title = item.title
+    
+    Looper:
+        iterable << item.values
+        CheckBox:
+            checked := loop.item.checked
+            text << loop.item.title
+            enabled << self_filter.is_checkbox_enabled
+
+
+
+enamldef Main(Window): main:
+    attr ui_data
+    title = 'Грабер статистических данных'
+    Container:
+        constraints = [
+            vbox(
+                hbox(label, field),
+                selected,
+                loader,
+                scroller,
+            ),
+            align('v_center', label, field),
+        ]
+        Label: label:
+            text = 'Источник данных'
+        ComboBox: field:
+            items << list(map(lambda s: s.title, ui_data.sources))
+            #items << ['a', 'b']
+            index := ui_data.selected_source_idx
+        Label: selected:
+            text << ui_data.selected_source.title or ''
+            #text = ''
+        Container: loader:
+            Conditional:
+                condition << len(ui_data.selected_source.filters) == 0
+                Loader:
+                    pass
+        ScrollArea: scroller:
+            Container:
+                # Note that a Looper expects to iterate over unique values.
+                # Passing duplicate values can lead to crashes.
+                Looper: looper:
+                    iterable << ui_data.selected_source.filters
+                    Filter:
+                        item=loop.item
+
