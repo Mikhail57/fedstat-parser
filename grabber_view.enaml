@@ -34,32 +34,53 @@ enamldef Loader(Container):
         text = 'Загрузка…'
 
 
+
 enamldef Filter(GroupBox): self_filter:
     attr item
     attr is_checkbox_enabled = len(item.values) > 1
+    attr filter_text = ''
 
     share_layout = True
     title = item.title
-    
-    Looper:
-        iterable << item.values
+
+    Conditional:
+        condition << len(self_filter.item.values) > 12
+        Field:
+            submit_triggers = ['lost_focus', 'return_pressed', 'auto_sync']
+            text := filter_text
+
+    Conditional:
+        condition << len(self_filter.item.values) == 1
         CheckBox:
-            checked := loop.item.checked
-            text << loop.item.title
-            enabled << self_filter.is_checkbox_enabled
+            attr item = self_filter.item.values[0]
+            checked = item.checked
+            text = item.title
+            enabled = False
+    Conditional:
+        condition << len(self_filter.item.values) > 1
+        ScrollArea:
+            Container:
+                Looper:
+                    iterable << sorted(filter(lambda v: filter_text.lower() in v.title.lower() or v.checked, item.values), key=lambda v: not v.checked)
+                    CheckBox:
+                        checked := loop.item.checked
+                        text << loop.item.title
+                        enabled << self_filter.is_checkbox_enabled
 
 
 
 enamldef Main(Window): main:
     attr ui_data
+    attr selected_source = ui_data.selected_source
     title = 'Грабер статистических данных'
     Container:
         constraints = [
             vbox(
                 hbox(label, field),
-                selected,
-                loader,
+                #selected,
+                status,
                 scroller,
+                save_container,
             ),
             align('v_center', label, field),
         ]
@@ -67,22 +88,35 @@ enamldef Main(Window): main:
             text = 'Источник данных'
         ComboBox: field:
             items << list(map(lambda s: s.title, ui_data.sources))
-            #items << ['a', 'b']
             index := ui_data.selected_source_idx
-        Label: selected:
-            text << ui_data.selected_source.title or ''
-            #text = ''
-        Container: loader:
+        Container: status:
             Conditional:
-                condition << len(ui_data.selected_source.filters) == 0
+                condition << selected_source.is_loading
                 Loader:
                     pass
+            Conditional:
+                condition << selected_source.is_error
+                Label:
+                    text << 'Ошибка: ' +  selected_source.error_msg
         ScrollArea: scroller:
             Container:
                 # Note that a Looper expects to iterate over unique values.
                 # Passing duplicate values can lead to crashes.
                 Looper: looper:
-                    iterable << ui_data.selected_source.filters
+                    iterable << selected_source.filters
                     Filter:
                         item=loop.item
+        Container: save_container:
+            Conditional:
+                condition << not selected_source.is_loading and not selected_source.is_error 
+                PushButton:
+                    text = 'Сохранить'
+                    clicked::
+                        selected_source.on_save_clicked(selected_source)
+            Conditional:
+                condition << selected_source.is_error
+                PushButton:
+                    text = 'Повторить'
+                    clicked::
+                        selected_source.on_reload_clicked(selected_source)
 

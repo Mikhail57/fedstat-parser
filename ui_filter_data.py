@@ -1,10 +1,18 @@
-from atom.api import Atom, List, Value, Bool, Int, Str, observe
+from atom.api import Atom, List, Value, Bool, Int, Str, Callable, observe
 
 
 class UiSource(Atom):
     id = Int()
     title = Str()
     filters = List()
+
+    is_loading = Bool()
+    is_error = Bool()
+    error_msg = Str()
+
+    on_selected = Callable()
+    on_save_clicked = Callable()
+    on_reload_clicked = Callable()
 
 
 class UiFilter(Atom):
@@ -18,10 +26,6 @@ class UiFilterValue(Atom):
     title = Str()
     checked = Bool()
 
-    @observe('checked')
-    def filter_checked(self, change):
-        print('checkbox id=%d title=%s checked=%s' % (self.id, self.title, self.checked))
-
 
 class UiData(Atom):
     sources = List()
@@ -31,3 +35,4 @@ class UiData(Atom):
     @observe('selected_source_idx')
     def update_filters(self, change):
         self.selected_source = self.sources[self.selected_source_idx]
+        self.selected_source.on_selected(self.selected_source)
