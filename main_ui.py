@@ -4,13 +4,25 @@ import enaml
 from enaml.qt.qt_application import QtApplication
 
 from ui_filter_data import UiData, UiSource, UiFilter
+from ui_popup_model import UiPopupState
 from ui_source_adapter import FedstatUiSourceAdapter
 
 
-def on_save_clicked(self: UiSource, file_path):
+def on_save_clicked(self: UiSource, file_path, parent_window):
     if not file_path:
         return
-    self.adapter.save(self.filters, file_path, lambda r: print(f'Result: {r}'))
+
+    with enaml.imports():
+        from grabber_view import NotificationPopup
+
+    state = UiPopupState(is_saving=True, is_succeed=False)
+    NotificationPopup(parent_window, state=state).show()
+
+    def callback(result):
+        state.is_saving = False
+        state.is_succeed = result
+
+    self.adapter.save(self.filters, file_path, callback)
 
 
 def on_selected(self: UiSource):
