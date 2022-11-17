@@ -26,9 +26,6 @@ def image_path(name):
     return os.path.join(dirname, 'images', name)
 
 
-LOADER_IMAGE = Image(data=Path(image_path('loader.gif')).read_bytes())
-
-
 enamldef Loader(Container):
     Label:
         text = 'Загрузка…'
