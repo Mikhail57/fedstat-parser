@@ -77,7 +77,6 @@ class FedStatApi:
         sdmx_response.encoding = 'utf-8'  # fedstat returns wrong encoding
         return SdmxParser(sdmx_response.text)
 
-
     @staticmethod
     def __get_filter_orientation(filter_id, js_default_data_ids):
         if filter_id == 0:

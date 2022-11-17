@@ -1,62 +1,35 @@
-import threading
-from typing import List
+from typing import List, Optional
 
 import enaml
-import pandas as pd
 from enaml.qt.qt_application import QtApplication
 
-from fedstat import FedStatApi
-from filter_field import FilterField, FilterValue
-from ui_filter_data import UiData, UiSource, UiFilter, UiFilterValue
-
-INDICATOR_ID = 57796
-fedstat = FedStatApi()
-params = None
+from ui_filter_data import UiData, UiSource, UiFilter
+from ui_source_adapter import FedstatUiSourceAdapter
 
 
-def on_save_clicked(self):
-    if not params:
+def on_save_clicked(self: UiSource, file_path):
+    if not file_path:
         return
-
-    data = fedstat.get_data(INDICATOR_ID, list(map(lambda f: FilterField(
-        id=f.id,
-        values=map(lambda v: FilterValue(
-            id=v.id,
-            checked=v.checked,
-            title='',
-            order=0,
-        ), f.values),
-        title='',
-
-    ), self.filters))).data
-    df = pd.json_normalize(data)
-    df.to_csv('result.csv')
+    self.adapter.save(self.filters, file_path, lambda r: print(f'Result: {r}'))
 
 
-def on_selected(self):
+def on_selected(self: UiSource):
     self.is_loading = True
     self.is_error = False
 
-    try:
-        global params
-        params = fedstat.get_data_ids(INDICATOR_ID)
-        self.filters = list(map(lambda p: UiFilter(
-            id=p.id,
-            title=p.title,
-            values=list(map(lambda v: UiFilterValue(
-                id=v.id,
-                title=v.title,
-                checked=v.checked
-            ), p.values))
-        ), params))
-    except IOError as e:
-        self.is_error = True
-        self.error_msg = 'Ошибка сети…'
-    except Exception as e:
-        self.is_error = True
-        self.error_msg = 'Неизвестная ошибка…'
-    finally:
+    def callback(filters: Optional[List[UiFilter]], exception: Optional[Exception]):
+        print(f'callback: {filters}, {exception}')
         self.is_loading = False
+        if filters:
+            self.filters = filters
+        if exception:
+            self.is_error = True
+            if exception is IOError:
+                self.error_msg = 'Ошибка сети…'
+            else:
+                self.error_msg = 'Неизвестная ошибка…'
+
+    self.adapter.load(callback)
 
 
 def main():
@@ -69,14 +42,15 @@ def main():
             id=57796,
             title='Индексы цен на прочую продукцию (затраты, услуги) инвестиционного назначения с 2017 г.',
             filters=[],
+            adapter=FedstatUiSourceAdapter(),
             on_save_clicked=on_save_clicked,
             on_selected=on_selected,
         ),
-        UiSource(
-            id=2,
-            title='Мур мур мур',
-            filters=[]
-        )
+        # UiSource(
+        #     id=2,
+        #     title='Мур мур мур',
+        #     filters=[]
+        # )
     ]
     view = Main(ui_data=UiData(sources=sources, selected_source=sources[0]))
     view.show()
