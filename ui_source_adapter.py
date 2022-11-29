@@ -38,15 +38,20 @@ class FedstatUiSourceAdapter(UiSourceAdapter):
 
     def __load(self) -> List[UiFilter]:
         self.params = self.fedstat.get_data_ids(self.indicator_id)
-        filters = list(map(lambda p: UiFilter(
-            id=p.id,
-            title=p.title,
-            values=list(map(lambda v: UiFilterValue(
-                id=v.id,
-                title=v.title,
-                checked=v.checked
-            ), p.values))
-        ), self.params))
+        selectable_filters = filter(lambda f: len(f.values) > 1, self.params)
+        filters = [
+            UiFilter(
+                id=f.id,
+                title=f.title,
+                values=[
+                    UiFilterValue(
+                        id=v.id,
+                        title=v.title,
+                        checked=v.checked
+                    ) for v in f.values
+                ]
+            ) for f in selectable_filters
+        ]
         return filters
 
     def save(self, ui_params: List[UiFilter], output_file_name: str, callback: Callable[[bool], None]):
