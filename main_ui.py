@@ -30,7 +30,6 @@ def on_selected(self: UiSource):
     self.is_error = False
 
     def callback(filters: Optional[List[UiFilter]], exception: Optional[Exception]):
-        print(f'callback: {filters}, {exception}')
         self.is_loading = False
         if filters:
             self.filters = filters

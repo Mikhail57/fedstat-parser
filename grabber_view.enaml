@@ -127,6 +127,7 @@ enamldef Main(Window): main:
             items << list(map(lambda s: s.title, ui_data.sources))
             index := ui_data.selected_source_idx
         Container: status:
+            hug_height = 'strong'
             Conditional:
                 condition << selected_source.is_loading
                 Loader:
@@ -149,7 +150,7 @@ enamldef Main(Window): main:
                 PushButton:
                     text = 'Сохранить'
                     clicked::
-                        path = FileDialogEx.get_save_file_name(main)
+                        path = FileDialogEx.get_save_file_name(main, name_filters=['*.csv'])
                         selected_source.on_save_clicked(selected_source, path, main)
             Conditional:
                 condition << selected_source.is_error
