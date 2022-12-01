@@ -76,5 +76,23 @@ class FedstatUiSourceAdapter(UiSourceAdapter):
                 val.checked = ui_v.checked
         data = self.fedstat.get_data(self.indicator_id, self.params).data
         df = pd.json_normalize(data)
+        df['Классификатор объектов административно-территориального деления (ОКАТО)'] \
+            .replace('Российская Федерация', 'RU', inplace=True)
+        df['period'].replace(
+            to_replace={'январь': '01', 'февраль': '02', 'март': '03', 'апрель': '04', 'май': '05', 'июнь': '06',
+                        'июль': '07', 'август': '08', 'сентябрь': '09', 'октябрь': '10', 'ноябрь': '11',
+                        'декабрь': '12'},
+            inplace=True
+        )
+        df['Виды показателя'].replace(
+            to_replace={'К предыдущему месяцу': 'month',
+                        'К декабрю предыдущего года': 'last_year_december',
+                        'К соответствующему периоду предыдущего года': 'year',
+                        'Отчетный месяц к соответствующему месяцу предыдущего года': 'reporting_month'},
+            inplace=True
+        )
+        df['year'] = df['year'].astype(str)
+        df['date'] = '01.' + df['period'] + '.' + df['year']
+        df.drop(columns=['year', 'period'], inplace=True)
         df.to_csv(output_file_name, index=False)
         return True
