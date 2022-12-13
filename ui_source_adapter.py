@@ -1,13 +1,17 @@
+import json
 import logging
+import os
 import threading
 from typing import List, Callable, Optional
 
+import Levenshtein
 import pandas as pd
 from enaml.application import schedule
 
 from fedstat import FedStatApi
 from filter_field import FilterField
 from ui_filter_data import UiFilterValue, UiFilter
+from utils import get_working_dir
 
 
 class UiSourceAdapter:
@@ -25,6 +29,13 @@ class FedstatUiSourceAdapter(UiSourceAdapter):
         self.indicator_id = 57796
         self.fedstat = FedStatApi()
         self.params: List[FilterField] = []
+        self._prev_sel_config_name = '.previously_selected_fedstat.json'
+        default_selection = json.load(open('fedstat_default_selection.json'))
+        self._previously_selected_file_path = os.path.join(get_working_dir(), self._prev_sel_config_name)
+        if os.path.exists(self._previously_selected_file_path):
+            self._prev_selection = json.load(open(self._previously_selected_file_path, 'r'))
+        else:
+            self._prev_selection = default_selection
 
     def load(self, callback: Callable[[Optional[List[UiFilter]], Optional[Exception]], None]):
         def internal():
@@ -38,7 +49,8 @@ class FedstatUiSourceAdapter(UiSourceAdapter):
 
     def __load(self) -> List[UiFilter]:
         self.params = self.fedstat.get_data_ids(self.indicator_id)
-        selectable_filters = filter(lambda f: len(f.values) > 1, self.params)
+        selectable_filters = list(filter(lambda f: len(f.values) > 1, self.params))
+        self._mark_prev_selected_okved()
         filters = [
             UiFilter(
                 id=f.id,
@@ -95,4 +107,25 @@ class FedstatUiSourceAdapter(UiSourceAdapter):
         df['date'] = '01.' + df['period'] + '.' + df['year']
         df.drop(columns=['year', 'period'], inplace=True)
         df.to_csv(output_file_name, index=False)
+
+        self._save_selected_okved()
+
         return True
+
+    def _find_okved(self) -> FilterField:
+        for p in self.params:
+            if 'оквэд' in p.title.lower():
+                return p
+
+    def _save_selected_okved(self):
+        okved = self._find_okved()
+        okved_values_to_save = [value.title for value in filter(lambda v: v.checked, okved.values)]
+        json.dump(okved_values_to_save, open(self._previously_selected_file_path, 'w'))
+
+    def _mark_prev_selected_okved(self):
+        okved = self._find_okved()
+        for v in okved.values:
+            v.checked = False
+            for p_s in self._prev_selection:
+                if Levenshtein.distance(v.title.lower(), p_s.lower()) <= 3:
+                    v.checked = True

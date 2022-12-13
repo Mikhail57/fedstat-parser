@@ -1,3 +1,7 @@
+import os
+import sys
+
+
 def is_iterable(x):
     """Test a variable for iterability.
     Determine whether an object ``x`` is iterable. In Python 2, this
@@ -33,3 +37,14 @@ def is_iterable(x):
     if isinstance(x, str):
         return False
     return hasattr(x, '__iter__')
+
+
+def get_working_dir() -> str:
+    if getattr(sys, 'frozen', False):
+        # If the application is run as a bundle, the PyInstaller bootloader
+        # extends the sys module by a flag frozen=True and sets the app
+        # path into variable _MEIPASS'.
+        application_path = sys._MEIPASS
+    else:
+        application_path = os.path.dirname(os.path.abspath(__file__))
+    return application_path
